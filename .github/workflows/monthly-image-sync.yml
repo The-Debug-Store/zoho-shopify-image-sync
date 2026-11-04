@@ -11,6 +11,10 @@ on:
         description: "Write images to Zoho (leave off for dry run)"
         type: boolean
         default: false
+      test_sku:
+        description: "Upload for this one SKU only (endpoint test)"
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -35,7 +39,9 @@ jobs:
           python-version: "3.12"
       - name: Run sync
         run: |
-          if [ "${{ inputs.apply }}" = "true" ]; then
+          if [ -n "${{ inputs.test_sku }}" ]; then
+            python sync_images.py --test-sku "${{ inputs.test_sku }}"
+          elif [ "${{ inputs.apply }}" = "true" ]; then
             python sync_images.py --apply
           else
             python sync_images.py

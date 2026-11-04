@@ -116,7 +116,7 @@ class Zoho:
 
     def upload_image(self, item_id, filename, content, mime):
         """UNVERIFIED endpoint. Guarded by UPLOAD_ENDPOINT_VERIFIED."""
-        if not UPLOAD_ENDPOINT_VERIFIED:
+        if not (UPLOAD_ENDPOINT_VERIFIED or getattr(self, "test_mode", False)):
             raise RuntimeError("Upload endpoint not verified; refusing to write.")
         boundary = uuid.uuid4().hex
         body = (
@@ -203,6 +203,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--apply", action="store_true", help="write images to Zoho (default: dry run)")
     ap.add_argument("--limit", type=int, default=0, help="process at most N candidate items (0 = all)")
+    ap.add_argument("--test-sku", default="", help="upload for this one SKU only, to verify the Zoho endpoint")
     args = ap.parse_args()
 
     zcfg = {
@@ -219,16 +220,21 @@ def main():
         "client_secret": env("SHOPIFY_CLIENT_SECRET", required=True),
         "version": env("SHOPIFY_API_VERSION", "2026-01"),
     }
-    if args.apply and not UPLOAD_ENDPOINT_VERIFIED:
+    if args.test_sku:
+        args.apply = True
+    elif args.apply and not UPLOAD_ENDPOINT_VERIFIED:
         sys.exit("Refusing --apply: Zoho upload endpoint is not yet verified (UPLOAD_ENDPOINT_VERIFIED = False).")
 
     zoho, shop = Zoho(zcfg), Shopify(scfg)
+    zoho.test_mode = bool(args.test_sku)
     run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     report_dir = env("REPORT_DIR", "reports")
     os.makedirs(report_dir, exist_ok=True)
 
     items = zoho.list_items()
     candidates = [i for i in items if not i.get("image_document_id") and not i.get("image_name")]
+    if args.test_sku:
+        candidates = [i for i in candidates if (i.get("sku") or "").strip() == args.test_sku]
     if args.limit:
         candidates = candidates[: args.limit]
     print(f"Zoho active items: {len(items)}; without image: {len(candidates)}")
@@ -263,8 +269,8 @@ def main():
                                    shopify_title=title)
         except Exception as e:  # keep going, record the failure
             row.update(status="failed", detail=str(e))
-        counts[{"skipped": "skipped", "failed": "failed", "uploaded": "uploaded",
-                "dry_run": "matched"}.get(row["status"], "skipped")] += 1
+        if row["status"] in ("skipped", "failed", "uploaded"):
+            counts[row["status"]] += 1
         rows.append(row)
         print(f"{row['status']:>8}  {sku or '(no SKU)'}  {row['detail'][:90]}")
 
