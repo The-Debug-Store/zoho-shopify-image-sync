@@ -275,7 +275,8 @@ def main():
                         row.update(status="dry_run", detail=img_url)
                     else:
                         content, mime, ext = download(img_url)
-                        res = zoho.upload_image(it["item_id"], f"{sku}{ext}", content, mime, it.get("name", ""))
+                        res = zoho.upload_image(it.get("group_id") or it["item_id"], f"{sku}{ext}", content, mime,
+                                          it.get("group_name") or it.get("name", ""))
                         # Read back: the upload must show on the item.
                         back = zoho.get(f"/items/{it['item_id']}", {})["item"]
                         if not back.get("image_document_id") and not back.get("image_name"):
