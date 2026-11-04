@@ -115,7 +115,11 @@ class Zoho:
             page += 1
 
     def upload_image(self, item_id, filename, content, mime):
-        """UNVERIFIED endpoint. Guarded by UPLOAD_ENDPOINT_VERIFIED."""
+        """Attach an image to an item. Two routes are tried in order:
+        A. PUT /itemmasters/{id} with form-data "image" (documented in the Zoho Books
+           items API, scope ZohoBooks.items.UPDATE).
+        B. POST /items/{id}/image with form-data "image" (community-reported route).
+        Guarded by UPLOAD_ENDPOINT_VERIFIED unless in one-SKU test mode."""
         if not (UPLOAD_ENDPOINT_VERIFIED or getattr(self, "test_mode", False)):
             raise RuntimeError("Upload endpoint not verified; refusing to write.")
         boundary = uuid.uuid4().hex
@@ -125,14 +129,22 @@ class Zoho:
             f"Content-Type: {mime}\r\n\r\n"
         ).encode() + content + f"\r\n--{boundary}--\r\n".encode()
         q = urllib.parse.urlencode({"organization_id": self.cfg["org_id"]})
-        url = f"{self.api}/items/{item_id}/image?{q}"
-        headers = self._headers()
-        headers["Content-Type"] = f"multipart/form-data; boundary={boundary}"
-        status, resp, _ = http("POST", url, headers=headers, data=body)
-        data = json.loads(resp or b"{}")
-        if status != 200 or data.get("code", 0) != 0:
-            raise RuntimeError(f"Zoho image upload failed (HTTP {status}): {data.get('message')}")
-        return data
+        routes = [("PUT", f"{self.api}/itemmasters/{item_id}?{q}", "A itemmasters PUT"),
+                  ("POST", f"{self.api}/items/{item_id}/image?{q}", "B items/image POST")]
+        errors = []
+        for method, url, label in routes:
+            headers = self._headers()
+            headers["Content-Type"] = f"multipart/form-data; boundary={boundary}"
+            status, resp, _ = http(method, url, headers=headers, data=body)
+            try:
+                data = json.loads(resp or b"{}")
+            except ValueError:
+                data = {"message": (resp or b"")[:200].decode("utf-8", "replace")}
+            if status in (200, 201) and data.get("code", 0) == 0:
+                data["_route"] = label
+                return data
+            errors.append(f"{label}: HTTP {status} {data.get('code')} {data.get('message')}")
+        raise RuntimeError("Zoho image upload failed. " + " | ".join(errors))
 
 
 class Shopify:
@@ -265,7 +277,7 @@ def main():
                         back = zoho.get(f"/items/{it['item_id']}", {})["item"]
                         if not back.get("image_document_id") and not back.get("image_name"):
                             raise RuntimeError("read-back shows no image after upload")
-                        row.update(status="uploaded", detail=f"image_document_id={back.get('image_document_id')}",
+                        row.update(status="uploaded", detail=f"{res.get('_route')}; image_document_id={back.get('image_document_id')}",
                                    shopify_title=title)
         except Exception as e:  # keep going, record the failure
             row.update(status="failed", detail=str(e))
