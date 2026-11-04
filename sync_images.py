@@ -41,7 +41,7 @@ import urllib.request
 import uuid
 from datetime import datetime, timezone
 
-UPLOAD_ENDPOINT_VERIFIED = False  # flip to True only after a live test on one item
+UPLOAD_ENDPOINT_VERIFIED = True  # verified 04/11/2026 on MIKROE-5236 (itemmasters PUT, read back image_name)
 ZOHO_PAGE_SIZE = 200
 MAX_IMAGE_BYTES = 5 * 1024 * 1024  # [UNVERIFIED] Zoho item image size limit; confirm
 
@@ -281,7 +281,7 @@ def main():
                         back = zoho.get(f"/items/{it['item_id']}", {})["item"]
                         if not back.get("image_document_id") and not back.get("image_name"):
                             raise RuntimeError("read-back shows no image after upload")
-                        row.update(status="uploaded", detail=f"{res.get('_route')}; image_document_id={back.get('image_document_id')}",
+                        row.update(status="uploaded", detail=f"{res.get('_route')}; image_name={back.get('image_name')}",
                                    shopify_title=title)
         except Exception as e:  # keep going, record the failure
             row.update(status="failed", detail=str(e))
