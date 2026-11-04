@@ -146,7 +146,10 @@ class Shopify:
         }).encode()
         status, resp, _ = http("POST", f"{base}/admin/oauth/access_token",
                                headers={"Content-Type": "application/x-www-form-urlencoded"}, data=body)
-        data = json.loads(resp or b"{}")
+        try:
+            data = json.loads(resp or b"{}")
+        except ValueError:
+            data = {"non_json_body": (resp or b"")[:300].decode("utf-8", "replace")}
         if status != 200 or "access_token" not in data:
             sys.exit(f"Shopify token request failed (HTTP {status}): {data}")
         self.headers = {
