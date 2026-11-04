@@ -114,7 +114,7 @@ class Zoho:
                 return items
             page += 1
 
-    def upload_image(self, item_id, filename, content, mime):
+    def upload_image(self, item_id, filename, content, mime, item_name):
         """Attach an image to an item. Two routes are tried in order:
         A. PUT /itemmasters/{id} with form-data "image" (documented in the Zoho Books
            items API, scope ZohoBooks.items.UPDATE).
@@ -126,7 +126,7 @@ class Zoho:
         body = (
             f"--{boundary}\r\n"
             f'Content-Disposition: form-data; name="JSONString"\r\n\r\n'
-            f"{{}}\r\n"
+            f"{json.dumps({'item_master_name': item_name})}\r\n"
             f"--{boundary}\r\n"
             f'Content-Disposition: form-data; name="image"; filename="{filename}"\r\n'
             f"Content-Type: {mime}\r\n\r\n"
@@ -275,7 +275,7 @@ def main():
                         row.update(status="dry_run", detail=img_url)
                     else:
                         content, mime, ext = download(img_url)
-                        res = zoho.upload_image(it["item_id"], f"{sku}{ext}", content, mime)
+                        res = zoho.upload_image(it["item_id"], f"{sku}{ext}", content, mime, it.get("name", ""))
                         # Read back: the upload must show on the item.
                         back = zoho.get(f"/items/{it['item_id']}", {})["item"]
                         if not back.get("image_document_id") and not back.get("image_name"):
