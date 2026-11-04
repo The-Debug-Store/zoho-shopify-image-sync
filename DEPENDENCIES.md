@@ -26,10 +26,10 @@ Items with no SKU match or no Shopify image are reported, not failed silently.
 Not used: the Claude Zoho Books connector (no image write), Zoho Flow, n8n.
 
 ## Scopes
-- Zoho Books: items fall under the settings family (Zoho docs table: "settings: Access the APIs related to Items, ...").
-  Needed: `ZohoBooks.settings.READ` (list and read items) and `ZohoBooks.settings.UPDATE` (write item image).
-  Do not request `ZohoBooks.settings.ALL` (includes CREATE and DELETE). Verified against Zoho's OAuth scopes table
-  (zoho.com/books/api/v3/oauth/#scopes), fetched 04/11/2026.
+- Zoho Books: `ZohoBooks.settings.READ` (list items, GET /items), `ZohoBooks.items.READ` and `ZohoBooks.items.UPDATE`
+  (image upload: PUT /books/v3/itemmasters/{item_id} with form-data `image` plus `JSONString`, documented in the Zoho
+  Books items API with OAuth Scope ZohoBooks.items.UPDATE). Checked against zoho.com/books/api/v3/items/ on 04/11/2026.
+  Tested: settings.READ+UPDATE token lists items but gets 401 code 57 on the image upload.
 - Shopify: `read_products` (variant SKU, product) and `read_files` (MediaImage featured image). Both are needed: the script's
   featured-image query returns MediaImage, which Shopify lists under read_files, not read_products. No write scopes.
   Source: shopify.dev access-scopes table, checked 04/11/2026.
