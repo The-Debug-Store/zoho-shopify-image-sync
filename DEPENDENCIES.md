@@ -20,7 +20,7 @@ Items with no SKU match or no Shopify image are reported, not failed silently.
 | Name | System | Purpose | Owner | Where credentials are held |
 |---|---|---|---|---|
 | Zoho Self Client | Zoho API console (accounts.zoho.com, US DC) | Read items, write item images | John | GitHub Secrets: ZOHO_CLIENT_ID, ZOHO_CLIENT_SECRET, ZOHO_REFRESH_TOKEN, ZOHO_ORG_ID |
-| Shopify custom app | Shopify admin, Debug Store | Read products and variants (read_products) | John | GitHub Secrets: SHOPIFY_SHOP_DOMAIN, SHOPIFY_ADMIN_TOKEN |
+| Shopify app "Debug Store Image Sync" | Shopify Dev Dashboard (dev.shopify.com) | Read products, variants and images (read_products, read_files) | John | GitHub Secrets: SHOPIFY_SHOP, SHOPIFY_CLIENT_ID, SHOPIFY_CLIENT_SECRET. Token fetched each run by client credentials grant, lasts 24 h |
 | GitHub repo `zoho-shopify-image-sync` | GitHub | Holds script, schedule and reports | John | GitHub account; Actions secrets |
 
 Not used: the Claude Zoho Books connector (no image write), Zoho Flow, n8n.

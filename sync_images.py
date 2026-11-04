@@ -11,8 +11,10 @@ Exit code 1 if any upload failed or any read failed (FAIL-1).
 
 Credentials come only from environment variables (GitHub Secrets in production):
   ZOHO_CLIENT_ID, ZOHO_CLIENT_SECRET, ZOHO_REFRESH_TOKEN, ZOHO_ORG_ID
-  SHOPIFY_SHOP_DOMAIN   e.g. debug-store.myshopify.com (no scheme)
-  SHOPIFY_ADMIN_TOKEN   Admin API access token of the custom app
+  SHOPIFY_SHOP          shop subdomain only, without .myshopify.com
+  SHOPIFY_CLIENT_ID     Dev Dashboard app Client ID
+  SHOPIFY_CLIENT_SECRET Dev Dashboard app Client secret
+  (Token is fetched each run by the client credentials grant; it lasts 24 hours.)
 Optional:
   ZOHO_ACCOUNTS_HOST    default accounts.zoho.com (US data centre; never zoho.eu)
   ZOHO_API_HOST         default www.zohoapis.com (US data centre)
@@ -135,9 +137,20 @@ class Zoho:
 
 class Shopify:
     def __init__(self, cfg):
-        self.url = f"https://{cfg['shop']}/admin/api/{cfg['version']}/graphql.json"
+        base = f"https://{cfg['shop']}.myshopify.com"
+        self.url = f"{base}/admin/api/{cfg['version']}/graphql.json"
+        body = urllib.parse.urlencode({
+            "grant_type": "client_credentials",
+            "client_id": cfg["client_id"],
+            "client_secret": cfg["client_secret"],
+        }).encode()
+        status, resp, _ = http("POST", f"{base}/admin/oauth/access_token",
+                               headers={"Content-Type": "application/x-www-form-urlencoded"}, data=body)
+        data = json.loads(resp or b"{}")
+        if status != 200 or "access_token" not in data:
+            sys.exit(f"Shopify token request failed (HTTP {status}): {data}")
         self.headers = {
-            "X-Shopify-Access-Token": cfg["token"],
+            "X-Shopify-Access-Token": data["access_token"],
             "Content-Type": "application/json",
         }
 
@@ -198,8 +211,9 @@ def main():
         "api_host": env("ZOHO_API_HOST", "www.zohoapis.com"),
     }
     scfg = {
-        "shop": env("SHOPIFY_SHOP_DOMAIN", required=True),
-        "token": env("SHOPIFY_ADMIN_TOKEN", required=True),
+        "shop": env("SHOPIFY_SHOP", required=True),
+        "client_id": env("SHOPIFY_CLIENT_ID", required=True),
+        "client_secret": env("SHOPIFY_CLIENT_SECRET", required=True),
         "version": env("SHOPIFY_API_VERSION", "2026-01"),
     }
     if args.apply and not UPLOAD_ENDPOINT_VERIFIED:
