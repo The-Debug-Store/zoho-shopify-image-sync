@@ -33,6 +33,7 @@ import csv
 import json
 import mimetypes
 import os
+import re
 import sys
 import time
 import urllib.error
@@ -275,7 +276,7 @@ def main():
                         row.update(status="dry_run", detail=img_url)
                     else:
                         content, mime, ext = download(img_url)
-                        res = zoho.upload_image(it.get("group_id") or it["item_id"], f"{sku}{ext}", content, mime,
+                        res = zoho.upload_image(it.get("group_id") or it["item_id"], re.sub(r"[^A-Za-z0-9._-]", "-", sku) + ext, content, mime,
                                           it.get("group_name") or it.get("name", ""))
                         # Read back: the upload must show on the item.
                         back = zoho.get(f"/items/{it['item_id']}", {})["item"]
