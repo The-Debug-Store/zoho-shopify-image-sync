@@ -26,8 +26,10 @@ Items with no SKU match or no Shopify image are reported, not failed silently.
 Not used: the Claude Zoho Books connector (no image write), Zoho Flow, n8n.
 
 ## Scopes
-- Zoho Books: read and write items (`ZohoBooks.items.ALL` or narrower if Zoho allows at creation).
-  Scope names are [UNVERIFIED]; confirm in the API console.
+- Zoho Books: items fall under the settings family (Zoho docs table: "settings: Access the APIs related to Items, ...").
+  Needed: `ZohoBooks.settings.READ` (list and read items) and `ZohoBooks.settings.UPDATE` (write item image).
+  Do not request `ZohoBooks.settings.ALL` (includes CREATE and DELETE). Verified against Zoho's OAuth scopes table
+  (zoho.com/books/api/v3/oauth/#scopes), fetched 04/11/2026.
 - Shopify: `read_products` only. The script does not write to Shopify.
 
 ## Webhooks
