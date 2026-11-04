@@ -125,6 +125,9 @@ class Zoho:
         boundary = uuid.uuid4().hex
         body = (
             f"--{boundary}\r\n"
+            f'Content-Disposition: form-data; name="JSONString"\r\n\r\n'
+            f"{{}}\r\n"
+            f"--{boundary}\r\n"
             f'Content-Disposition: form-data; name="image"; filename="{filename}"\r\n'
             f"Content-Type: {mime}\r\n\r\n"
         ).encode() + content + f"\r\n--{boundary}--\r\n".encode()
@@ -284,7 +287,7 @@ def main():
         if row["status"] in ("skipped", "failed", "uploaded"):
             counts[row["status"]] += 1
         rows.append(row)
-        print(f"{row['status']:>8}  {sku or '(no SKU)'}  {row['detail'][:90]}")
+        print(f"{row['status']:>8}  {sku or '(no SKU)'}  {row['detail'][:400]}")
 
     csv_path = os.path.join(report_dir, f"image-sync-{run_id}.csv")
     with open(csv_path, "w", newline="", encoding="utf-8") as f:
